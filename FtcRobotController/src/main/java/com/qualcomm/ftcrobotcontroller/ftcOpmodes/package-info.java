@@ -28,13 +28,7 @@
  * THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-
 /**
- * FTC Robot Controller Operation Modes (Op Mode). User defined Op Modes go here.
- * <p>
- * The quickest way to get started is ... TODO: finish docs
- * <p>
-
+ * Package for FTC HQ Distributed OpModes.
  */
-
 package com.qualcomm.ftcrobotcontroller.ftcOpmodes;

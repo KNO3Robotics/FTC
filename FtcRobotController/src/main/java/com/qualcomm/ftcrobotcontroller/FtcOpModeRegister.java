@@ -31,113 +31,109 @@ OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE. */
 
 package com.qualcomm.ftcrobotcontroller;
 
-import com.qualcomm.ftcrobotcontroller.ftcOpmodes.*;
+import android.app.Application;
+import android.content.Context;
+import com.qualcomm.ftccommon.DbgLog;
+import com.qualcomm.ftcrobotcontroller.ftcOpmodes.NullOp;
+import com.qualcomm.ftcrobotcontroller.opMode.annotation.Program;
 import com.qualcomm.robotcore.eventloop.opmode.OpMode;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeManager;
 import com.qualcomm.robotcore.eventloop.opmode.OpModeRegister;
+import dalvik.system.DexFile;
+
+import java.util.Enumeration;
 
 /**
  * Register Op Modes
+ * @Author Jaxon Brown
  */
 public class FtcOpModeRegister implements OpModeRegister {
-
-
-
-  private void registerAtlasOpModes() {
-
-  }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-  private OpModeManager opModeManager;
-
-  public void register(OpModeManager manager) {
-    opModeManager = manager;
-
-    registerAtlasOpModes();
-    registerFtc();
-  }
-
-
-  private void register(String name, Class<? extends OpMode> opModeClass) {
-    opModeManager.register(name, opModeClass);
-  }
-
-
-  private void registerFtc() {
-    register("NullOp", NullOp.class);
-
-    //register("MatrixK9TeleOp", MatrixK9TeleOp.class);
-    //register("K9TeleOp", K9TeleOp.class);
-    //register ("PushBotAuto", PushBotAuto.class);
-    //register ("PushBotManual", PushBotManual.class);
-
-    //manager.register("AdafruitRGBExample", AdafruitRGBExample.class);
-    //manager.register("ColorSensorDriver", ColorSensorDriver.class);
-
-    //manager.register("IrSeekerOp", IrSeekerOp.class);
-    //manager.register("CompassCalibration", CompassCalibration.class);
-    //manager.register("I2cAddressChangeExample", LinearI2cAddressChange.class);
-
-
-    //manager.register("NxtTeleOp", NxtTeleOp.class);
-
-    //manager.register("LinearK9TeleOp", LinearK9TeleOp.class);
-    //manager.register("LinearIrExample", LinearIrExample.class);
-
-
-    //manager.register ("PushBotManual1", PushBotManual1.class);
-    //manager.register ("PushBotAutoSensors", PushBotAutoSensors.class);
-    //manager.register ("PushBotIrEvent", PushBotIrEvent.class);
-
-    //manager.register ("PushBotManualSensors", PushBotManualSensors.class);
-    //manager.register ("PushBotOdsDetectEvent", PushBotOdsDetectEvent.class);
-    //manager.register ("PushBotOdsFollowEvent", PushBotOdsFollowEvent.class);
-    //manager.register ("PushBotTouchEvent", PushBotTouchEvent.class);
-
-    //manager.register("PushBotDriveTouch", PushBotDriveTouch.java);
-    //manager.register("PushBotIrSeek", PushBotIrSeek.java);
-    //manager.register("PushBotSquare", PushBotSquare.java);
-
-
-
-  }
+    public static OpModeManager opModeManager;
+
+    public void register(OpModeManager manager) {
+        opModeManager = manager;
+
+        registerKNO3OpModes();
+        registerFtc();
+    }
+
+    private void register(String name, Class<? extends OpMode> opModeClass) {
+        opModeManager.register(name, opModeClass);
+    }
+
+    private void registerKNO3OpModes() {
+        String packageName = "com.qualcomm.ftcrobotcontroller.season";
+
+        DbgLog.msg("--------ENTER REGISTER OP MODES-----------");
+
+        try {
+            Context context = (Application) Class.forName("android.app.ActivityThread")
+                    .getMethod("currentApplication").invoke(null, null);
+            DexFile dex = new DexFile(context.getPackageCodePath());
+            Enumeration<String> dexEntries = dex.entries();
+
+            while (dexEntries.hasMoreElements()) {
+                //DbgLog.msg("TESTING DEX ENTRY");
+                try {
+                    String clazzName = dexEntries.nextElement();
+                    //DbgLog.msg("CLASS NAME " + clazzName);
+
+                    if (clazzName.startsWith(packageName)) {
+                        //DbgLog.msg("DOES START WITH-------------------------");
+                        Class<?> clazz = Class.forName(clazzName, true, context.getClassLoader());
+                        if(OpMode.class.isAssignableFrom(clazz)) {
+                            //DbgLog.msg("IS ASSIGNABLE FROM");
+                            Class<? extends OpMode> opMode = (Class<? extends OpMode>) clazz;
+                            if (opMode.isAnnotationPresent(Program.class)) {
+                                //DbgLog.msg("HAS PROGRAM");
+                                Program annotation = opMode.getAnnotation(Program.class);
+                                try {
+                                    ProgramData data = new ProgramData(clazzName, annotation);
+                                    if (annotation.enabled()) {
+                                        DbgLog.msg("REGISTERED ENTRY");
+                                        register(data.gameName + " " + data.robotName + " " + data.robotVersion + " " +
+                                                data.programName, opMode);
+                                        continue;
+                                    }
+                                } catch(Exception ex) {
+                                    ex.printStackTrace();
+                                    if (annotation.enabled()) {
+                                        DbgLog.msg("REGISTERED ENTRY");
+                                        register("UnAugmented " + annotation.name(), opMode);
+                                        continue;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                } catch (Exception ex) {
+                    DbgLog.logStacktrace(ex);
+                }
+                //DbgLog.msg("DID NOT REGISTER ENTRY");
+            }
+        } catch (Exception ex) {
+            DbgLog.logStacktrace(ex);
+        }
+        DbgLog.msg("---------EXIT REGISTER OP MODES--------------");
+    }
+
+    private void registerFtc() {
+        register("NullOp", NullOp.class);
+    }
+
+    private class ProgramData {
+        String gameName;
+        String robotName;
+        String robotVersion;
+        String programName;
+
+        public ProgramData(String className, Program annotation) {
+            System.out.println(className);
+            String[] components = className.replace("com.qualcomm.ftcrobotcontroller.season.", "").split("(\\.)");
+            gameName = components[0];
+            robotName = components[1];
+            robotVersion = components[2];
+            programName = annotation.name();
+        }
+    }
 }
